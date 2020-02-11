@@ -11,6 +11,7 @@ import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
+import java.security.spec.ECGenParameterSpec;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.UUID;
@@ -55,21 +56,21 @@ public class ProtectServerJavaDemo {
         }
 
         String randomAlias = UUID.randomUUID().toString();
-        System.out.println("Generating a new RSA keypair with alias " + randomAlias + "...");
-        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA", sunPKCS11Provider);
-        keyPairGenerator.initialize(2048);
+        System.out.println("Generating a new secp256r1 EC key with alias " + randomAlias + "...");
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC", sunPKCS11Provider);
+        keyPairGenerator.initialize(new ECGenParameterSpec("secp256r1"));
         KeyPair generatedKeyPair = keyPairGenerator.generateKeyPair();
 
         System.out.println("Generating self-signed dummy certificate (required by Java APIs)...");
         X500Name dn = new X500Name("CN=" + randomAlias + " dummy cert");
         JcaX509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(dn, BigInteger.ONE, new Date(), new Date(), dn, generatedKeyPair.getPublic());
-        X509CertificateHolder generatedCertificate = certBuilder.build(new JcaContentSignerBuilder("SHA256WITHRSA").build(generatedKeyPair.getPrivate()));
+        X509CertificateHolder generatedCertificate = certBuilder.build(new JcaContentSignerBuilder("SHA256withECDSA").build(generatedKeyPair.getPrivate()));
 
         System.out.println("Storing self-signed dummy certificate...");
         pkcs11Keystore.setEntry(randomAlias, new KeyStore.PrivateKeyEntry(generatedKeyPair.getPrivate(), new Certificate[]{CertificateFactory.getInstance("X.509").generateCertificate(new ByteArrayInputStream(generatedCertificate.getEncoded()))}), null);
 
         byte[] tbs = "sample data".getBytes();
-        String signatureAlg = "SHA256withRSA";
+        String signatureAlg = "SHA256withECDSA";
         System.out.println("Generating sample " + signatureAlg + " signature over the following bytes: " + bytesToHex(tbs));
         Signature signature = Signature.getInstance(signatureAlg);
         signature.initSign(generatedKeyPair.getPrivate());
