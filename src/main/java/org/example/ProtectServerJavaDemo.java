@@ -71,12 +71,21 @@ public class ProtectServerJavaDemo {
 
         byte[] tbs = "sample data".getBytes();
         String signatureAlg = "SHA256withECDSA";
-        System.out.println("Generating sample " + signatureAlg + " signature over the following bytes: " + bytesToHex(tbs));
+        System.out.println("Generating sample " + signatureAlg + " signature over the following bytes: " + bytesToHex(tbs) + " ...");
         Signature signature = Signature.getInstance(signatureAlg);
         signature.initSign(generatedKeyPair.getPrivate());
         signature.update(tbs);
         byte[] signedBytes = signature.sign();
         System.out.println("Signature: " + bytesToHex(signedBytes));
+
+        System.out.println("Verifying signature...");
+        signature.initVerify(generatedKeyPair.getPublic());
+        signature.update(tbs);
+        if (signature.verify(signedBytes)) {
+            System.out.println("Signature verified correctly.");
+        } else {
+            System.out.println("Signature failed verification.");
+        }
 
         System.out.println("Done.");
     }
