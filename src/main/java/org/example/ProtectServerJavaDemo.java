@@ -18,13 +18,12 @@ import java.util.UUID;
 
 public class ProtectServerJavaDemo {
     public static void main(String[] args) throws Exception {
-        if (args.length != 3) {
-            System.err.println("Usage: java -jar target\\simple-pkcs11-usage-from-java-demo-1.0-SNAPSHOT-jar-with-dependencies.jar \"C:\\Program Files\\SafeNet\\Protect Toolkit 5\\Protect Toolkit C RT\\cryptoki.dll\" <SLOT_ID> \"<SLOT_PASSWORD>\"");
+        if (args.length != 2) {
+            System.err.println("Usage: java -jar target\\simple-pkcs11-usage-from-java-demo-1.0-SNAPSHOT-jar-with-dependencies.jar \"C:\\Program Files\\SafeNet\\Protect Toolkit 5\\Protect Toolkit C RT\\cryptoki.dll\" <SLOT_ID>");
             return;
         }
         String pkcs11ModulePath = args[0];
         String slotId = args[1];
-        String pin = args[2];
 
         // Configuring PKCS #11 provider.
         Provider sunPKCS11Provider = Security.getProvider("SunPKCS11");
@@ -46,9 +45,10 @@ public class ProtectServerJavaDemo {
 
         // Loading PKCS #11 based KeyStore
         KeyStore pkcs11Keystore = KeyStore.getInstance("PKCS11", sunPKCS11Provider);
-        pkcs11Keystore.load(null, pin.toCharArray());
+        System.out.println("User PIN: ");
+        pkcs11Keystore.load(null, System.console().readPassword());
 
-        System.out.println("Listing current key pairs:");
+        System.out.println("Listing current entries in SunPKCS11 KeyStore:");
         Enumeration<String> aliases = pkcs11Keystore.aliases();
         while (aliases.hasMoreElements()) {
             String s = aliases.nextElement();
