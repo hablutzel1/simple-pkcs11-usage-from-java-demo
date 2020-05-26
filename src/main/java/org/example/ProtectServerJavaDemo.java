@@ -1,4 +1,4 @@
-package org.example;//import sun.security.pkcs11.SunPKCS11;
+package org.example;
 
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509CertificateHolder;
@@ -6,9 +6,11 @@ import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.math.BigInteger;
-import java.security.*;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.Signature;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.spec.ECGenParameterSpec;
@@ -18,35 +20,11 @@ import java.util.UUID;
 
 public class ProtectServerJavaDemo {
     public static void main(String[] args) throws Exception {
-        if (args.length != 2) {
-            System.err.println("Usage: java -jar target\\simple-pkcs11-usage-from-java-demo-1.0-SNAPSHOT-jar-with-dependencies.jar \"C:\\Program Files\\SafeNet\\Protect Toolkit 5\\Protect Toolkit C RT\\cryptoki.dll\" <SLOT_ID>");
-            return;
-        }
-        String pkcs11ModulePath = args[0];
-        String slotId = args[1];
-
-        // Configuring PKCS #11 provider.
-        Provider sunPKCS11Provider = Security.getProvider("SunPKCS11");
-        pkcs11ModulePath = new File(pkcs11ModulePath).getAbsolutePath().replaceAll("\\\\", "/");
-        String inlineConfig = "--name = protectserver\n" +
-                "library = \"" + pkcs11ModulePath + "\"\n" +
-                "slot=" + slotId + "\n" +
-                "attributes(generate, CKO_PRIVATE_KEY,*) = {  \n" +
-                "       CKA_TOKEN = true  \n" +
-                "       CKA_PRIVATE = true  \n" +
-                "       CKA_SENSITIVE = true  \n" +
-                "       CKA_EXTRACTABLE = false  \n" +
-                "       CKA_DECRYPT = false  \n" +
-                "       CKA_SIGN = true  \n" +
-                "       CKA_UNWRAP = false\n" +
-                "    }";
-        sunPKCS11Provider = sunPKCS11Provider.configure(inlineConfig);
-        Security.addProvider(sunPKCS11Provider);
+        SunPKCS11Util.installSunPKCS11Provider();
 
         // Loading PKCS #11 based KeyStore
-        KeyStore pkcs11Keystore = KeyStore.getInstance("PKCS11", sunPKCS11Provider);
-        System.out.println("User PIN: ");
-        pkcs11Keystore.load(null, System.console().readPassword());
+        KeyStore pkcs11Keystore = KeyStore.getInstance("PKCS11");
+        pkcs11Keystore.load(null, "12345678".toCharArray());
 
         System.out.println("Listing current entries in SunPKCS11 KeyStore:");
         Enumeration<String> aliases = pkcs11Keystore.aliases();
@@ -57,7 +35,7 @@ public class ProtectServerJavaDemo {
 
         String randomAlias = UUID.randomUUID().toString();
         System.out.println("Generating a new secp256r1 EC key with alias " + randomAlias + "...");
-        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC", sunPKCS11Provider);
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC");
         keyPairGenerator.initialize(new ECGenParameterSpec("secp256r1"));
         KeyPair generatedKeyPair = keyPairGenerator.generateKeyPair();
 
@@ -71,7 +49,7 @@ public class ProtectServerJavaDemo {
 
         byte[] tbs = "sample data".getBytes();
         String signatureAlg = "SHA256withECDSA";
-        System.out.println("Generating sample " + signatureAlg + " signature over the following bytes: " + bytesToHex(tbs) + " ...");
+        System.out.println("Generating sample " + signatureAlg + " signature over the following bytes: " + bytesToHex(tbs) + "...");
         Signature signature = Signature.getInstance(signatureAlg);
         signature.initSign(generatedKeyPair.getPrivate());
         signature.update(tbs);
